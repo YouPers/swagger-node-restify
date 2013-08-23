@@ -9,7 +9,7 @@
  *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either restify or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
@@ -23,7 +23,7 @@ var apiVersion = "0.0";
 var resources = {};
 var validators = [];
 var appHandler = null;
-var allowedMethods = ['get', 'post', 'put', 'patch', 'delete'];
+var allowedMethods = ['get', 'post', 'put', 'delete'];
 var allowedDataTypes = ['string', 'int', 'long', 'double', 'boolean', 'date', 'array'];
 var params = require(__dirname + '/paramTypes.js');
 var allModels = {};
@@ -69,7 +69,7 @@ function configure(bp, av) {
 
 function setHeaders(res) {
   res.header('Access-Control-Allow-Origin', "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE");
+  res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
   res.header("Access-Control-Allow-Headers", "Content-Type, api_key");
   res.header("Content-Type", "application/json; charset=utf-8");
 }
@@ -104,7 +104,7 @@ function setResourceListingPaths(app) {
         if (data.code) {
           res.send(data, data.code);
         } else {
-          res.send(JSON.stringify(filterApiListing(req, res, r)));
+          res.send(filterApiListing(req, res, r));
         }
       }
     });
@@ -129,17 +129,16 @@ function filterApiListing(req, res, r) {
   var excludedPaths = [];
 
   if (!r || !r.apis) {
-    return stopWithError(res, {
-      'reason': 'internal error',
-      'code': 500
-    });
+    return stopWithError(res, {'reason': 'internal error', 'code': 500});
   }
 
-  _.forOwn(r.apis, function (api) {
+  for (var key in r.apis) {
+    if (!r.apis.hasOwnProperty(key)) {
+      continue;
+    }
+    var api = r.apis[key];
+
     for (var opKey in api.operations) {
-      if (!api.operations.hasOwnProperty(opKey)) {
-        continue;
-      }
       var op = api.operations[opKey];
       var path = api.path.replace(formatString, "").replace(/{.*\}/, "*");
       if (!canAccessResource(req, path, op.httpMethod)) {
@@ -164,7 +163,7 @@ function filterApiListing(req, res, r) {
     _.forOwn(api.operations, function (operation) {
       if (!excludedPaths.indexOf(operation.httpMethod + ":" + api.path) >= 0) {
         clonedApi.operations.push(JSON.parse(JSON.stringify(operation)));
-        addModelsFromBody(operation, requiredModels);
+        addModelsFromPost(operation, requiredModels);
         addModelsFromResponse(operation, requiredModels);
       }
     });
@@ -232,6 +231,14 @@ function addModelsFromBody(operation, models) {
       }
     });
   }
+
+  var responseModel = operation.responseClass;
+  if (responseModel) {
+    responseModel = responseModel.replace(/^List\[/,"").replace(/\]/,"");
+    if (models.indexOf(responseModel) < 0) {
+      models.push(responseModel); 
+    }
+  }
 }
 
 // Add model to list and parse List[model] elements
@@ -241,7 +248,7 @@ function addModelsFromResponse(operation, models) {
   if (responseModel) {
     responseModel = responseModel.replace(/^List\[/, "").replace(/\]/, "");
     if (models.indexOf(responseModel) < 0) {
-      models.push(responseModel);
+      models.push(responseModel); 
     }
   }
 }
@@ -251,9 +258,6 @@ function addModelsFromResponse(operation, models) {
 function shallowClone(obj) {
   var cloned = {};
   for (var i in obj) {
-    if (!obj.hasOwnProperty(i)) {
-      continue;
-    }
     if (typeof (obj[i]) != "object") {
       cloned[i] = obj[i];
     }
@@ -344,8 +348,8 @@ function addMethod(app, callback, spec) {
   //  convert .{format} to .json, make path params happy
   var fullPath = spec.path.replace(formatString, jsonSuffix).replace(/\/{/g, "/:").replace(/\}/g, "");
   var currentMethod = spec.method.toLowerCase();
-  if (allowedMethods.indexOf(currentMethod) > -1) {
-    app[currentMethod](fullPath, function (req, res) {
+  if (allowedMethods.indexOf(currentMethod)>-1) {
+    app[currentMethod](fullPath, function(req,res, next) {
       exports.setHeaders(res);
 
       // todo: needs to do smarter matching against the defined paths
@@ -357,7 +361,7 @@ function addMethod(app, callback, spec) {
         }), 403);
       } else {
         try {
-          callback(req, res);
+          callback(req, res, next);
         } catch (error) {
           if (typeof errorHandler === "function") {
             errorHandler(req, res, error);
@@ -389,7 +393,11 @@ function setErrorHandler(handler) {
 // Add swagger handlers to express 
 
 function addHandlers(type, handlers) {
-  _.forOwn(handlers, function (handler) {
+  for (var i = 0; i < handlers.length; i++) {
+    if (!handlers.hasOwnProperty(i)) {
+      continue;
+    }
+    var handler = handlers[i];
     handler.spec.method = type;
     addMethod(appHandler, handler.action, handler.spec);
   });
@@ -398,12 +406,16 @@ function addHandlers(type, handlers) {
 // Discover swagger handler from resource
 
 function discover(resource) {
-  _.forOwn(resource, function (handler, key) {
-    if (handler.spec && handler.spec.method && allowedMethods.indexOf(handler.spec.method.toLowerCase()) > -1) {
-      addMethod(appHandler, handler.action, handler.spec);
-    } else
-      console.error('auto discover failed for: ' + key);
-  });
+  for (var key in resource) {
+    if (!resource.hasOwnProperty(key)) {
+      continue;
+    }
+    if (resource[key].spec && resource[key].spec.method && allowedMethods.indexOf(resource[key].spec.method.toLowerCase())>-1) {
+      addMethod(appHandler, resource[key].action, resource[key].spec); 
+    } 
+    else
+      console.error('auto discover failed for: ' + key); 
+  }
 }
 
 // Discover swagger handler from resource file path
@@ -441,7 +453,6 @@ function addPut() {
 }
 
 // adds patch handler
-
 function addPatch() {
   addHandlers('PATCH', arguments);
   return this;
@@ -454,23 +465,12 @@ function addModels(models) {
   if (!allModels) {
     allModels = models;
   } else {
-    _.forOwn(models, function (model, key) {
-      var required = model.required;
-      _.forOwn(model.properties, function (property, propertyKey) {
-        // convert enum to allowableValues
-        if (typeof property.enum !== 'undefined') {
-          property.allowableValues = {
-            "valueType": "LIST",
-            "values": property.enum
-          }
-        }
-        // convert existence in v4 required array to required attribute
-        if (required && required.indexOf(propertyKey) > -1) {
-          property.required = true;
-        }
-      });
-      allModels[key] = model;
-    });
+    for(k in models) {
+      if (!models.hasOwnProperty(k)) {
+        continue;
+      }
+      allModels[k] = models[k];
+    }
   }
   return this;
 }
@@ -482,7 +482,6 @@ function wrap(callback, req, resp) {
 // appends a spec to an existing operation
 
 function appendToApi(rootResource, api, spec) {
-
   if (!api.description) {
     api.description = spec.description;
   }
@@ -496,8 +495,12 @@ function appendToApi(rootResource, api, spec) {
     });
   }
   // validate params
-  _.forOwn(spec.params, function (param) {
-    if (param.allowableValues) {
+  for ( var paramKey in spec.params) {
+    if (!spec.params.hasOwnProperty(paramKey)) {
+      continue;
+    }
+    var param = spec.params[paramKey];
+    if(param.allowableValues) {
       var avs = param.allowableValues.toString();
       var type = avs.split('[')[0];
       if (type == 'LIST') {
@@ -587,23 +590,20 @@ function addValidator(v) {
 // Create Error JSON by code and text
 
 function error(code, description) {
-  return {
-    "code": code,
-    "reason": description
-  };
+  return {"code" : code, "reason" : description};
 }
 
 // Stop express ressource with error code
 
 function stopWithError(res, error) {
   exports.setHeaders(res);
-  if (error && error.reason && error.code)
-    res.send(JSON.stringify(error), error.code);
+  if (error && error.description && error.code)
+    res.send(error, error.code);
   else
-    res.send(JSON.stringify({
+    res.send({
       'reason': 'internal error',
       'code': 500
-    }), 500);
+    }, 500);
 }
 
 // Export most needed error types for easier handling
@@ -652,6 +652,7 @@ exports.errors = {
 exports.params = params;
 exports.queryParam = exports.params.query;
 exports.pathParam = exports.params.path;
+exports.postParam = exports.params.post;
 exports.bodyParam = exports.params.body;
 exports.formParam = exports.params.form;
 exports.getModels = allModels;
@@ -668,12 +669,10 @@ exports.setHeaders = setHeaders;
 exports.addGet = addGet;
 exports.addPost = addPost;
 exports.addPut = addPut;
-exports.addPatch = addPatch;
 exports.addDelete = addDelete;
 exports.addGET = addGet;
 exports.addPOST = addPost;
 exports.addPUT = addPut;
-exports.addPATCH = addPatch;
 exports.addDELETE = addDelete;
 exports.addModels = addModels;
 exports.setAppHandler = setAppHandler;
