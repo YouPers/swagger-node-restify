@@ -345,6 +345,7 @@ function addMethod(app, callback, spec) {
     var fullPath = spec.path.replace(formatString, jsonSuffix).replace(/\/{/g, "/:").replace(/\}/g, "");
     var currentMethod = spec.method.toLowerCase();
     if (allowedMethods.indexOf(currentMethod) > -1) {
+        if(currentMethod == 'delete') currentMethod = 'del';
         var myCallback = function (req, res, next) {
             exports.setHeaders(res);
 
