@@ -30,8 +30,9 @@ var allModels = {};
 
 // Default error handler
 var errorHandler = function (req, res, error) {
-    if (error.code && error.reason)
+    if (error.code && error.reason) {
         res.send(error, error.code);
+    }
     else {
         console.error(req.method + " failed for path '" + require('url').parse(req.url).href + "': " + error);
         res.send({
@@ -112,7 +113,7 @@ function setResourceListingPaths(app) {
 }
 
 function basePathFromApi(path) {
-    var l = resourcePath.replace(formatString, Suffix);
+    var l = resourcePath.replace(formatString, jsonSuffix);
     var p = path.substring(l.length + 1) + formatString;
     return p;
 }
@@ -162,9 +163,10 @@ function filterApiListing(req, res, r) {
 
         clonedApi.operations = [];
         _.forOwn(api.operations, function (operation) {
-            if (!excludedPaths.indexOf(operation.httpMethod + ":" + api.path) >= 0) {
+            if (excludedPaths.indexOf(operation.httpMethod + ":" + api.path) < 0) {
                 clonedApi.operations.push(JSON.parse(JSON.stringify(operation)));
-                addModelsFromBody(operation, requiredModels);
+                addModelsFromParams(operation, requiredModels);
+                addModelsFromResponseMessages(operation, requiredModels);
                 addModelsFromResponse(operation, requiredModels);
             }
         });
@@ -176,14 +178,8 @@ function filterApiListing(req, res, r) {
 
     // add required models to output
     output.models = {};
-    _.forOwn(requiredModels, function (modelName) {
-        var model = allModels[modelName];
-        if (model) {
-            output.models[modelName] = model;
-        }
-    });
-    //  look in object graph
-    _.forOwn(output.models, function (model) {
+
+    function addSubModelsToRequiredModels(model) {
         if (model && model.properties) {
             _.forOwn(model.properties, function (property) {
                 var type = property.type;
@@ -194,7 +190,7 @@ function filterApiListing(req, res, r) {
                         if (property.items) {
                             var ref = property.items.$ref;
                             if (ref && requiredModels.indexOf(ref) < 0) {
-                                requiredModels.push(ref);
+                                addModelToOutputByName(ref);
                             }
                         }
                         break;
@@ -203,43 +199,70 @@ function filterApiListing(req, res, r) {
                         break;
                     default:
                         if (requiredModels.indexOf(type) < 0) {
-                            requiredModels.push(type);
+                            addModelToOutputByName(type);
                         }
                         break;
                 }
             });
         }
-    });
-    _.forOwn(requiredModels, function (modelName) {
+    }
+
+    function addModelToOutputByName(modelName) {
         if (!output[modelName]) {
             var model = allModels[modelName];
+            addSubModelsToRequiredModels(model);
             if (model) {
                 output.models[modelName] = model;
             }
         }
-    });
+    }
+
+
+
+    _.forOwn(requiredModels, addModelToOutputByName);
+
+
+    //  look in object graph
+    _.forOwn(output.models, addSubModelsToRequiredModels);
+
+
+    _.forOwn(requiredModels,addModelToOutputByName);
+
     return output;
 }
 
 // Add model to list and parse List[model] elements
 
-function addModelsFromBody(operation, models) {
+function addModelsFromParams(operation, models) {
     if (operation.parameters) {
         _.forOwn(operation.parameters, function (param) {
-            if (param.paramType == "body" && param.dataType) {
-                var model = param.dataType.replace(/^List\[/, "").replace(/\]/, "");
+            if (param.dataType) {
+                var model = param.dataType.replace(/^array\[/, "").replace(/\]/, "");
                 models.push(model);
             }
         });
     }
 }
 
+function addModelsFromResponseMessages(operation, models) {
+    if (operation.responseMessages) {
+        _.forOwn(operation.responseMessages, function (responseMessage) {
+            if (responseMessage.responseModel) {
+                var model = responseMessage.responseModel;
+                model = model.replace(/^array\[/, "").replace(/\]/, "");
+                models.push(model);
+            }
+        });
+    }
+}
+
+
 // Add model to list and parse List[model] elements
 
 function addModelsFromResponse(operation, models) {
     var responseModel = operation.responseClass;
     if (responseModel) {
-        responseModel = responseModel.replace(/^List\[/, "").replace(/\]/, "");
+        responseModel = responseModel.replace(/^array\[/, "").replace(/\]/, "");
         if (models.indexOf(responseModel) < 0) {
             models.push(responseModel);
         }
@@ -254,7 +277,7 @@ function shallowClone(obj) {
         if (!obj.hasOwnProperty(i)) {
             continue;
         }
-        if (typeof (obj[i]) != "object") {
+        if (typeof (obj[i]) !== "object") {
             cloned[i] = obj[i];
         }
     }
@@ -281,7 +304,7 @@ function canAccessResource(req, path, httpMethod) {
  * @param response
  */
 
-function resourceListing(req, res) {
+function resourceListing(req, res, next) {
     var r = {
         "apiVersion": apiVersion,
         "swaggerVersion": swaggerVersion,
@@ -298,7 +321,7 @@ function resourceListing(req, res) {
     });
 
     exports.setHeaders(res);
-    res.write(r);
+    res.write(JSON.stringify(r));
     res.end();
 }
 
@@ -311,7 +334,7 @@ function addMethod(app, callback, spec) {
     if (root && root.apis) {
         // this path already exists in swagger resources
         _.forOwn(root.apis, function (api) {
-            if (api && api.path == spec.path && api.method == spec.method) {
+            if (api && api.path === spec.path && api.method === spec.method) {
                 // add operation & return
                 appendToApi(root, api, spec);
                 return;
@@ -345,7 +368,9 @@ function addMethod(app, callback, spec) {
     var fullPath = spec.path.replace(formatString, jsonSuffix).replace(/\/{/g, "/:").replace(/\}/g, "");
     var currentMethod = spec.method.toLowerCase();
     if (allowedMethods.indexOf(currentMethod) > -1) {
-        if(currentMethod == 'delete') currentMethod = 'del';
+        if(currentMethod === 'delete') {
+            currentMethod = 'del';
+        }
         var myCallback = function (req, res, next) {
             exports.setHeaders(res);
 
@@ -409,8 +434,9 @@ function discover(resource) {
     _.forOwn(resource, function (handler, key) {
         if (handler.spec && handler.spec.method && allowedMethods.indexOf(handler.spec.method.toLowerCase()) > -1) {
             addMethod(appHandler, handler.action, handler.spec);
-        } else
+        } else {
             console.error('auto discover failed for: ' + key);
+        }
     });
 }
 
@@ -470,7 +496,7 @@ function addModels(models) {
                     property.allowableValues = {
                         "valueType": "LIST",
                         "values": property.enum
-                    }
+                    };
                 }
                 // convert existence in v4 required array to required attribute
                 if (required && required.indexOf(propertyKey) > -1) {
@@ -508,14 +534,15 @@ function appendToApi(rootResource, api, spec) {
         if (param.allowableValues) {
             var avs = param.allowableValues.toString();
             var type = avs.split('[')[0];
-            if (type == 'LIST') {
-                var values = avs.match(/\[(.*)\]/g).toString().replace('\[', '').replace('\]', '').split(',');
+            var values;
+            if (type === 'LIST') {
+                values = avs.match(/\[(.*)\]/g).toString().replace('[', '').replace(']', '').split(',');
                 param.allowableValues = {
                     valueType: type,
                     values: values
                 };
-            } else if (type == 'RANGE') {
-                var values = avs.match(/\[(.*)\]/g).toString().replace('\[', '').replace('\]', '').split(',');
+            } else if (type === 'RANGE') {
+                values = avs.match(/\[(.*)\]/g).toString().replace('[', '').replace(']', '').split(',');
                 param.allowableValues = {
                     valueType: type,
                     min: values[0],
@@ -605,13 +632,15 @@ function error(code, description) {
 
 function stopWithError(res, error) {
     exports.setHeaders(res);
-    if (error && error.reason && error.code)
+    if (error && error.reason && error.code) {
         res.send(error, error.code);
-    else
+    }
+    else {
         res.send({
             'reason': 'internal error',
             'code': 500
         }, 500);
+    }
 }
 
 // Export most needed error types for easier handling
