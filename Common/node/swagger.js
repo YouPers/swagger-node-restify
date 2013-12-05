@@ -42,22 +42,22 @@ var errorHandler = function (req, res, error) {
 };
 
 function configureSwaggerPaths(format, path, suffix) {
-  formatString = format;
-  resourcePath = path;
-  jsonSuffix = suffix;
+    formatString = format;
+    resourcePath = path;
+    jsonSuffix = suffix;
 }
 
 // Configuring swagger will set the basepath and api version for all
 // subdocuments.  It should only be done once, and during bootstrap of the app
 
 function configure(bp, av) {
-  basePath = bp;
-  apiVersion = av;
-  setResourceListingPaths(appHandler);
+    basePath = bp;
+    apiVersion = av;
+    setResourceListingPaths(appHandler);
 
-  // add the GET for resource listing
-  appHandler.get(resourcePath.replace(formatString, jsonSuffix), resourceListing);
-  // update resources if already configured
+    // add the GET for resource listing
+    appHandler.get(resourcePath.replace(formatString, jsonSuffix), resourceListing);
+    // update resources if already configured
 
   _.forOwn(resources, function (resource) {
     resource.apiVersion = av;
@@ -68,10 +68,10 @@ function configure(bp, av) {
 // Convenience to set default headers in each response.
 
 function setHeaders(res) {
-  res.header('Access-Control-Allow-Origin', "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
-  res.header("Access-Control-Allow-Headers", "Content-Type, api_key");
-  res.header("Content-Type", "application/json; charset=utf-8");
+    res.header('Access-Control-Allow-Origin', "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
+    res.header("Access-Control-Allow-Headers", "Content-Type, api_key");
+    res.header("Content-Type", "application/json; charset=utf-8");
 }
 
 // creates declarations for each resource path.
@@ -86,7 +86,7 @@ function setResourceListingPaths(app) {
       // find the api base path from the request URL
       // /api-docs.json/pet => /pet.json
 
-      var p = basePathFromApi(req.url.split('?')[0]);
+            var p = basePathFromApi(req.url.split('?')[0]);
 
       // this handles the request
       // api-docs.json/pet => pet.{format}
@@ -112,14 +112,14 @@ function setResourceListingPaths(app) {
 }
 
 function basePathFromApi(path) {
-  var l = resourcePath.replace(formatString, jsonSuffix);
-  var p = path.substring(l.length + 1) + formatString;
-  return p;
+    var l = resourcePath.replace(formatString, jsonSuffix);
+    var p = path.substring(l.length + 1) + formatString;
+    return p;
 }
 
 function baseApiFromPath(path) {
-  var p = resourcePath.replace(formatString, jsonSuffix) + "/" + path.replace(formatString, "");
-  return p;
+    var p = resourcePath.replace(formatString, jsonSuffix) + "/" + path.replace(formatString, "");
+    return p;
 }
 
 // Applies a filter to an api listing.  When done, the api listing will only contain
@@ -232,13 +232,13 @@ function addModelsFromBody(operation, models) {
     });
   }
 
-  var responseModel = operation.responseClass;
-  if (responseModel) {
-    responseModel = responseModel.replace(/^List\[/,"").replace(/\]/,"");
-    if (models.indexOf(responseModel) < 0) {
-      models.push(responseModel); 
+    var responseModel = operation.responseClass;
+    if (responseModel) {
+        responseModel = responseModel.replace(/^List\[/, "").replace(/\]/, "");
+        if (models.indexOf(responseModel) < 0) {
+            models.push(responseModel);
+        }
     }
-  }
 }
 
 // Add model to list and parse List[model] elements
@@ -250,19 +250,18 @@ function addModelsFromResponse(operation, models) {
     if (models.indexOf(responseModel) < 0) {
       models.push(responseModel); 
     }
-  }
 }
 
 // clone anything but objects to avoid shared references
 
 function shallowClone(obj) {
-  var cloned = {};
-  for (var i in obj) {
-    if (typeof (obj[i]) != "object") {
-      cloned[i] = obj[i];
+    var cloned = {};
+    for (var i in obj) {
+        if (typeof (obj[i]) != "object") {
+            cloned[i] = obj[i];
+        }
     }
-  }
-  return cloned;
+    return cloned;
 }
 
 // function for filtering a resource.  override this with your own implementation.
@@ -301,16 +300,16 @@ function resourceListing(req, res) {
     });
   });
 
-  exports.setHeaders(res);
-  res.write(JSON.stringify(r));
-  res.end();
+    exports.setHeaders(res);
+    res.write(JSON.stringify(r));
+    res.end();
 }
 
 // Adds a method to the api along with a spec.  If the spec fails to validate, it won't be added
 
 function addMethod(app, callback, spec) {
-  var apiRootPath = spec.path.split("/")[1];
-  var root = resources[apiRootPath];
+    var apiRootPath = spec.path.split("/")[1];
+    var root = resources[apiRootPath];
 
   if (root && root.apis) {
     // this path already exists in swagger resources
@@ -339,11 +338,9 @@ function addMethod(app, callback, spec) {
         "models": []
       };
     }
-    resources[apiRootPath] = root;
-  }
 
-  root.apis.push(api);
-  appendToApi(root, api, spec);
+    root.apis.push(api);
+    appendToApi(root, api, spec);
 
   //  convert .{format} to .json, make path params happy
   var fullPath = spec.path.replace(formatString, jsonSuffix).replace(/\/{/g, "/:").replace(/\}/g, "");
@@ -381,7 +378,7 @@ function addMethod(app, callback, spec) {
 // Set expressjs app handler
 
 function setAppHandler(app) {
-  appHandler = app;
+    appHandler = app;
 }
 
 // Change error handler
@@ -422,21 +419,21 @@ function discover(resource) {
 // Discover swagger handler from resource file path
 
 function discoverFile(file) {
-  return discover(require(file));
+    return discover(require(file));
 }
 
 // adds get handler
 
 function addGet() {
-  addHandlers('GET', arguments);
-  return this;
+    addHandlers('GET', arguments);
+    return this;
 }
 
 // adds post handler
 
 function addPost() {
-  addHandlers('POST', arguments);
-  return this;
+    addHandlers('POST', arguments);
+    return this;
 }
 
 // adds delete handler
@@ -449,8 +446,8 @@ function addDelete() {
 // adds put handler
 
 function addPut() {
-  addHandlers('PUT', arguments);
-  return this;
+    addHandlers('PUT', arguments);
+    return this;
 }
 
 // adds patch handler
@@ -472,8 +469,7 @@ function addModels(models) {
       }
       allModels[k] = models[k];
     }
-  }
-  return this;
+    return this;
 }
 
 function wrap(callback, req, resp) {
@@ -585,7 +581,7 @@ function appendToApi(rootResource, api, spec) {
 }
 
 function addValidator(v) {
-  validators.push(v);
+    validators.push(v);
 }
 
 // Create Error JSON by code and text
