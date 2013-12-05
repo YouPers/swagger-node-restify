@@ -31,13 +31,13 @@ var allModels = {};
 // Default error handler
 var errorHandler = function (req, res, error) {
     if (error.code && error.reason)
-        res.send(JSON.stringify(error), error.code);
+        res.send(error, error.code);
     else {
         console.error(req.method + " failed for path '" + require('url').parse(req.url).href + "': " + error);
-        res.send(JSON.stringify({
+        res.send({
             "reason": "unknown error",
             "code": 500
-        }), 500);
+        }, 500);
     }
 };
 
@@ -104,7 +104,7 @@ function setResourceListingPaths(app) {
                 if (data.code) {
                     res.send(data, data.code);
                 } else {
-                    res.send(JSON.stringify(filterApiListing(req, res, r)));
+                    res.send(filterApiListing(req, res, r));
                 }
             }
         });
@@ -112,7 +112,7 @@ function setResourceListingPaths(app) {
 }
 
 function basePathFromApi(path) {
-    var l = resourcePath.replace(formatString, jsonSuffix);
+    var l = resourcePath.replace(formatString, Suffix);
     var p = path.substring(l.length + 1) + formatString;
     return p;
 }
@@ -298,7 +298,7 @@ function resourceListing(req, res) {
     });
 
     exports.setHeaders(res);
-    res.write(JSON.stringify(r));
+    res.write(r);
     res.end();
 }
 
@@ -352,10 +352,10 @@ function addMethod(app, callback, spec) {
             // todo: needs to do smarter matching against the defined paths
             var path = req.url.split('?')[0].replace(jsonSuffix, "").replace(/{.*\}/, "*");
             if (!canAccessResource(req, path, req.method)) {
-                res.send(JSON.stringify({
+                res.send({
                     "reason": "forbidden",
                     "code": 403
-                }), 403);
+                }, 403);
             } else {
                 try {
                     callback(req, res, next);
@@ -606,12 +606,12 @@ function error(code, description) {
 function stopWithError(res, error) {
     exports.setHeaders(res);
     if (error && error.reason && error.code)
-        res.send(JSON.stringify(error), error.code);
+        res.send(error, error.code);
     else
-        res.send(JSON.stringify({
+        res.send({
             'reason': 'internal error',
             'code': 500
-        }), 500);
+        }, 500);
 }
 
 // Export most needed error types for easier handling
