@@ -316,7 +316,7 @@ function resourceListing(req, res, next) {
         var p = resourcePath + "/" + key.replace(formatString, "");
         r.apis.push({
             "path": p,
-            "description": "none"
+            "description": value.apis[0].description
         });
     });
 
