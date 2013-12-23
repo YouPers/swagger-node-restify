@@ -27,6 +27,7 @@ var allowedMethods = ['get', 'post', 'put', 'patch', 'delete'];
 var allowedDataTypes = ['string', 'int', 'long', 'double', 'boolean', 'date', 'array'];
 var params = require(__dirname + '/paramTypes.js');
 var allModels = {};
+var authMiddleware;
 
 // Default error handler
 var errorHandler = function (req, res, error) {
@@ -394,8 +395,12 @@ function addMethod(app, callback, spec) {
             }
         };
         var callbacks = [];
+        if (authMiddleware) {
+            callbacks.push(authMiddleware(spec.accessLevel || 'al_admin'));
+        }
+
         if (Array.isArray(spec.beforeCallbacks)) {
-            callbacks = spec.beforeCallbacks.concat(myCallback);
+            callbacks = callbacks.concat(spec.beforeCallbacks).push(myCallback);
         } else {
             callbacks.push(myCallback);
         }
@@ -419,7 +424,7 @@ function setErrorHandler(handler) {
     errorHandler = handler;
 }
 
-// Add swagger handlers to express 
+// Add swagger handlers to express
 
 function addHandlers(type, handlers) {
     _.forOwn(handlers, function (handler) {
@@ -619,6 +624,11 @@ function addValidator(v) {
     validators.push(v);
 }
 
+function setAuthorizationMiddleWare(authmw) {
+    authMiddleware = authmw;
+}
+
+
 // Create Error JSON by code and text
 
 function error(code, description) {
@@ -721,3 +731,4 @@ exports.discover = discover;
 exports.discoverFile = discoverFile;
 exports.configureSwaggerPaths = configureSwaggerPaths;
 exports.setHeaders = setHeaders;
+exports.setAuthorizationMiddleWare = setAuthorizationMiddleWare;
