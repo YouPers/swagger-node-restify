@@ -400,7 +400,7 @@ function addMethod(app, callback, spec) {
         }
 
         if (Array.isArray(spec.beforeCallbacks)) {
-            callbacks = callbacks.concat(spec.beforeCallbacks).push(myCallback);
+            callbacks = callbacks.concat(spec.beforeCallbacks).concat(myCallback);
         } else {
             callbacks.push(myCallback);
         }
