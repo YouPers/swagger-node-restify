@@ -600,7 +600,7 @@ function appendToApi(rootResource, api, spec) {
         "notes": spec.notes,
         "errorResponses": spec.errorResponses,
         "nickname": spec.nickname,
-        "summary": spec.summary + ' AccessLevel: ' + (spec.accessLevel || 'al_systemadmin'),
+        "summary": spec.summary + ', AccessLevel: ' + (spec.accessLevel || 'al_systemadmin'),
         "consumes" : spec.consumes,
         "produces" : spec.produces
     };
