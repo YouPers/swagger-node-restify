@@ -197,8 +197,14 @@ function filterApiListing(req, res, r) {
                         break;
                     case "string":
                     case "long":
+                    case "boolean":
+                    case "Date":
                         break;
                     default:
+                        if (output.models[type]) {
+                            // we already have this model in the output
+                            return;
+                        }
                         if (requiredModels.indexOf(type) < 0) {
                             addModelToOutputByName(type);
                         }
@@ -211,9 +217,9 @@ function filterApiListing(req, res, r) {
     function addModelToOutputByName(modelName) {
         if (!output[modelName]) {
             var model = allModels[modelName];
-            addSubModelsToRequiredModels(model);
             if (model) {
                 output.models[modelName] = model;
+                addSubModelsToRequiredModels(model);
             }
         }
     }
