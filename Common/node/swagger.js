@@ -189,7 +189,7 @@ function filterApiListing(req, res, r) {
                     case "array":
                     case "Array":
                         if (property.items) {
-                            var ref = property.items.$ref;
+                            var ref = property.items.$ref || property.items.type;
                             if (ref && requiredModels.indexOf(ref) < 0) {
                                 addModelToOutputByName(ref);
                             }
