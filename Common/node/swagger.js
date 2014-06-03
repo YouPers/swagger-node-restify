@@ -610,6 +610,9 @@ function appendToApi(rootResource, api, spec) {
         "consumes" : spec.consumes,
         "produces" : spec.produces
     };
+    delete spec.params;
+    delete spec.method;
+
 
     // Add custom fields.
     op = _.extend({}, spec, op);
