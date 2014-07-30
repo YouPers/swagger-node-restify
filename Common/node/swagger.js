@@ -225,7 +225,6 @@ function filterApiListing(req, res, r) {
     }
 
 
-
     _.forOwn(requiredModels, addModelToOutputByName);
 
 
@@ -233,7 +232,7 @@ function filterApiListing(req, res, r) {
     _.forOwn(output.models, addSubModelsToRequiredModels);
 
 
-    _.forOwn(requiredModels,addModelToOutputByName);
+    _.forOwn(requiredModels, addModelToOutputByName);
 
     return output;
 }
@@ -375,41 +374,55 @@ function addMethod(app, callback, spec) {
     var fullPath = spec.path.replace(formatString, jsonSuffix).replace(/\/{/g, "/:").replace(/\}/g, "");
     var currentMethod = spec.method.toLowerCase();
     if (allowedMethods.indexOf(currentMethod) > -1) {
-        if(currentMethod === 'delete') {
+        if (currentMethod === 'delete') {
             currentMethod = 'del';
         }
-        var myCallback = function (req, res, next) {
-            exports.setHeaders(res);
+        var myCallback;
 
-            // todo: needs to do smarter matching against the defined paths
-            var path = req.url.split('?')[0].replace(jsonSuffix, "").replace(/{.*\}/, "*");
-            if (!canAccessResource(req, path, req.method)) {
-                res.send({
-                    "reason": "forbidden",
-                    "code": 403
-                }, 403);
-            } else {
-                try {
-                    callback(req, res, next);
-                } catch (error) {
-                    if (typeof errorHandler === "function") {
-                        errorHandler(req, res, error);
-                    } else {
-                        throw error;
+        if (callback) {
+            myCallback = function (req, res, next) {
+                exports.setHeaders(res);
+
+                // todo: needs to do smarter matching against the defined paths
+                var path = req.url.split('?')[0].replace(jsonSuffix, "").replace(/{.*\}/, "*");
+                if (!canAccessResource(req, path, req.method)) {
+                    res.send({
+                        "reason": "forbidden",
+                        "code": 403
+                    }, 403);
+                } else {
+                    try {
+                        callback(req, res, next);
+                    } catch (error) {
+                        if (typeof errorHandler === "function") {
+                            errorHandler(req, res, error);
+                        } else {
+                            throw error;
+                        }
                     }
                 }
-            }
-        };
+            };
+        }
         var callbacks = [];
-        if (authMiddleware) {
+        // specific authorization Middleware
+        if (spec.authMiddleware && _.isFunction(spec.authMiddleware)) {
+            callbacks.push(spec.authMiddleware)
+        } else if (authMiddleware) {
+            // default authorization Middleware
+            // default to 'al_admin' --> if no accesslevel is specified assume the strongest security
             callbacks.push(authMiddleware(spec.accessLevel || 'al_admin'));
+        } else {
+            // use no authorization Middleware
         }
 
         if (Array.isArray(spec.beforeCallbacks)) {
-            callbacks = callbacks.concat(spec.beforeCallbacks).concat(myCallback);
-        } else {
+            callbacks = callbacks.concat(spec.beforeCallbacks);
+        }
+
+        if (myCallback) {
             callbacks.push(myCallback);
         }
+
         app[currentMethod](fullPath, callbacks);
     } else {
         console.error('unable to add ' + currentMethod.toUpperCase() + ' handler');
@@ -607,8 +620,8 @@ function appendToApi(rootResource, api, spec) {
         "errorResponses": spec.errorResponses,
         "nickname": spec.nickname,
         "summary": spec.summary + ', AccessLevel: ' + (spec.accessLevel || 'al_systemadmin'),
-        "consumes" : spec.consumes,
-        "produces" : spec.produces
+        "consumes": spec.consumes,
+        "produces": spec.produces
     };
     delete spec.params;
 
