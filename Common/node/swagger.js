@@ -472,37 +472,8 @@ function discoverFile(file) {
 
 // adds get handler
 
-function addGet() {
-    addHandlers('GET', arguments);
-    return this;
-}
-
-// adds post handler
-
-function addPost() {
-    addHandlers('POST', arguments);
-    return this;
-}
-
-// adds delete handler
-
-function addDelete() {
-    addHandlers('DELETE', arguments);
-    return this;
-}
-
-// adds put handler
-
-function addPut() {
-    addHandlers('PUT', arguments);
-    return this;
-}
-
-// adds patch handler
-
-function addPatch() {
-    addHandlers('PATCH', arguments);
-    return this;
+function addOperation(operationDoc) {
+    addMethod(appHandler, operationDoc.action,operationDoc.spec);
 }
 
 // adds models to swagger
@@ -733,16 +704,7 @@ exports.canAccessResource = canAccessResource;
 exports.resourcePath = resourcePath;
 exports.resourceListing = resourceListing;
 exports.setHeaders = setHeaders;
-exports.addGet = addGet;
-exports.addPost = addPost;
-exports.addPut = addPut;
-exports.addPatch = addPatch;
-exports.addDelete = addDelete;
-exports.addGET = addGet;
-exports.addPOST = addPost;
-exports.addPUT = addPut;
-exports.addPATCH = addPatch;
-exports.addDELETE = addDelete;
+exports.addOperation = addOperation;
 exports.addModels = addModels;
 exports.setAppHandler = setAppHandler;
 exports.setErrorHandler = setErrorHandler;
