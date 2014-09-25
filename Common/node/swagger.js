@@ -22,7 +22,7 @@ var swaggerVersion = "1.1";
 var apiVersion = "0.0";
 var resources = {};
 var validators = [];
-var appHandler = null;
+var restifyServer = null;
 var allowedMethods = ['get', 'post', 'put', 'patch', 'delete'];
 var allowedDataTypes = ['string', 'int', 'long', 'double', 'boolean', 'date', 'array'];
 var params = require(__dirname + '/paramTypes.js');
@@ -55,10 +55,10 @@ function configureSwaggerPaths(format, path, suffix) {
 function configure(bp, av) {
     basePath = bp;
     apiVersion = av;
-    setResourceListingPaths(appHandler);
+    setResourceListingPaths(restifyServer);
 
     // add the GET for resource listing
-    appHandler.get(resourcePath.replace(formatString, jsonSuffix), resourceListing);
+    restifyServer.get(resourcePath.replace(formatString, jsonSuffix), resourceListing);
     // update resources if already configured
 
     _.forOwn(resources, function (resource) {
@@ -432,8 +432,13 @@ function addMethod(app, callback, spec) {
 
 // Set expressjs app handler
 
-function setAppHandler(app) {
-    appHandler = app;
+function setRestifyServer(server) {
+    restifyServer = server;
+}
+
+
+function getRestifyServer() {
+    return restifyServer;
 }
 
 // Change error handler
@@ -448,7 +453,7 @@ function setErrorHandler(handler) {
 function addHandlers(type, handlers) {
     _.forOwn(handlers, function (handler) {
         handler.spec.method = type;
-        addMethod(appHandler, handler.action, handler.spec);
+        addMethod(restifyServer, handler.action, handler.spec);
     });
 }
 
@@ -457,7 +462,7 @@ function addHandlers(type, handlers) {
 function discover(resource) {
     _.forOwn(resource, function (handler, key) {
         if (handler.spec && handler.spec.method && allowedMethods.indexOf(handler.spec.method.toLowerCase()) > -1) {
-            addMethod(appHandler, handler.action, handler.spec);
+            addMethod(restifyServer, handler.action, handler.spec);
         } else {
             console.error('auto discover failed for: ' + key);
         }
@@ -473,7 +478,7 @@ function discoverFile(file) {
 // adds get handler
 
 function addOperation(operationDoc) {
-    addMethod(appHandler, operationDoc.action,operationDoc.spec);
+    addMethod(restifyServer, operationDoc.action,operationDoc.spec);
 }
 
 // adds models to swagger
@@ -706,7 +711,8 @@ exports.resourceListing = resourceListing;
 exports.setHeaders = setHeaders;
 exports.addOperation = addOperation;
 exports.addModels = addModels;
-exports.setAppHandler = setAppHandler;
+exports.setRestifyServer = setRestifyServer;
+exports.getRestifyServer = getRestifyServer;
 exports.setErrorHandler = setErrorHandler;
 exports.errorHandler = errorHandler;
 exports.discover = discover;

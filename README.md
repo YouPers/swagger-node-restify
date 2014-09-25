@@ -25,7 +25,7 @@ restify.defaultResponseHeaders = function(data) {
   this.header('Access-Control-Allow-Origin', '*');
 };
 
-swagger.setAppHandler(server);
+swagger.setRestifyServer(server);
 ```
 
 You can optionally add a validator function, which is used to filter the swagger json and request operations:
