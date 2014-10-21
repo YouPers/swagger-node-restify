@@ -337,7 +337,7 @@ function addMethod(app, callback, spec) {
     var apiRootPath = spec.path.split("/")[1];
     var root = resources[apiRootPath];
 
-    if (root && root.apis) {
+    if (root && root.apis && !spec.hidden) {
         // this path already exists in swagger resources
         _.forOwn(root.apis, function (api) {
             if (api && api.path === spec.path && api.method === spec.method) {
@@ -348,28 +348,30 @@ function addMethod(app, callback, spec) {
         });
     }
 
-    var api = {
-        "path": spec.path
-    };
-    if (!resources[apiRootPath]) {
-        if (!root) {
-            //
-            var resourcePath = "/" + apiRootPath.replace(formatString, "");
-            root = {
-                "apiVersion": apiVersion,
-                "swaggerVersion": swaggerVersion,
-                "basePath": basePath,
-                "resourcePath": resourcePath,
-                "apis": [],
-                "models": []
-            };
+    if (!spec.hidden) {
+
+        var api = {
+            "path": spec.path
+        };
+        if (!resources[apiRootPath]) {
+            if (!root) {
+                //
+                var resourcePath = "/" + apiRootPath.replace(formatString, "");
+                root = {
+                    "apiVersion": apiVersion,
+                    "swaggerVersion": swaggerVersion,
+                    "basePath": basePath,
+                    "resourcePath": resourcePath,
+                    "apis": [],
+                    "models": []
+                };
+            }
+            resources[apiRootPath] = root;
         }
-        resources[apiRootPath] = root;
+
+        root.apis.push(api);
+        appendToApi(root, api, spec);
     }
-
-    root.apis.push(api);
-    appendToApi(root, api, spec);
-
     //  convert .{format} to .json, make path params happy
     var fullPath = spec.path.replace(formatString, jsonSuffix).replace(/\/{/g, "/:").replace(/\}/g, "");
     var currentMethod = spec.method.toLowerCase();
@@ -478,7 +480,7 @@ function discoverFile(file) {
 // adds get handler
 
 function addOperation(operationDoc) {
-    addMethod(restifyServer, operationDoc.action,operationDoc.spec);
+    addMethod(restifyServer, operationDoc.action, operationDoc.spec);
 }
 
 // adds models to swagger
@@ -516,7 +518,9 @@ function wrap(callback, req, resp, next) {
 // appends a spec to an existing operation
 
 function appendToApi(rootResource, api, spec) {
-
+    if (spec.hidden) {
+        return;
+    }
     if (!api.description) {
         api.description = spec.description;
     }
