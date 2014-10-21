@@ -219,7 +219,7 @@ function filterApiListing(req, res, r) {
             var model = allModels[modelName];
             if (model) {
                 output.models[modelName] = model;
-                addSubModelsToRequiredModels(model);
+                // addSubModelsToRequiredModels(model);
             }
         }
     }
@@ -229,10 +229,9 @@ function filterApiListing(req, res, r) {
 
 
     //  look in object graph
-    _.forOwn(output.models, addSubModelsToRequiredModels);
+    // _.forOwn(output.models, addSubModelsToRequiredModels);
 
-
-    _.forOwn(requiredModels, addModelToOutputByName);
+    // _.forOwn(requiredModels, addModelToOutputByName);
 
     return output;
 }
