@@ -30,16 +30,16 @@ var allModels = {};
 var authMiddleware;
 
 // Default error handler
-var errorHandler = function (req, res, error) {
+var errorHandler = function (req, res, next, error) {
     if (error.code && error.reason) {
-        res.send(error, error.code);
+        res.send(error.code, error);
     }
     else {
         console.error(req.method + " failed for path '" + require('url').parse(req.url).href + "': " + error);
-        res.send({
+        res.send(500, {
             "reason": "unknown error",
             "code": 500
-        }, 500);
+        });
     }
 };
 
